@@ -5,7 +5,6 @@ on:
     branches:
       - main
 
-
 jobs:
   build:
     name: Build and analyze
@@ -14,34 +13,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+          fetch-depth: 0
+          
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
         with:
-          java-version: 17
-          distribution: 'zulu' # Alternative distribution options are available.
+          dotnet-version: 6.0.x  # 根据你的项目调整版本
+          
+      - name: Check project structure
+        shell: powershell
+        run: |
+          Write-Host "工作目录: $pwd"
+          Write-Host "目录内容:"
+          Get-ChildItem -Recurse -Name
+          
       - name: Cache SonarQube packages
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}\cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-      - name: Cache SonarQube scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}\scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
+          
       - name: Install SonarQube scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
         shell: powershell
         run: |
-          New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
-          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+          dotnet tool install --global dotnet-sonarscanner
+          
+      - name: Validate secrets
+        shell: powershell
+        run: |
+          if ([string]::IsNullOrEmpty("${{ secrets.SONAR_TOKEN }}")) {
+            Write-Error "sqp_d3b736215c0155ab7e3351c22dbc656db3a98e2f"
+            exit 1
+          }
+          if ([string]::IsNullOrEmpty("${{ secrets.SONAR_HOST_URL }}")) {
+            Write-Error "http://localhost:9000"
+            exit 1
+          }
+          Write-Host "环境变量验证通过"
+          
       - name: Build and analyze
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"Dome" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
-          dotnet build
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          # 开始 SonarQube 分析
+          dotnet sonarscanner begin /k:"Dome" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
+          
+          # 构建项目 - 请将 YourSolution.sln 替换为实际文件
+          dotnet build YourSolution.sln
+          
+          # 结束分析并上传结果
+          dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"

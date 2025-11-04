@@ -56,10 +56,10 @@ jobs:
         shell: powershell
         run: |
           # 开始 SonarQube 分析
-          dotnet sonarscanner begin /G:"Dome" /d:Docker Desktop/Sonar.token="${{ sqp_d3b736215c0155ab7e3351c22dbc656db3a98e2f }}" /d:Docker Desktop/Sonar.host.url="${{ http://localhost:9000 }}"
+          dotnet sonarscanner begin /G:"Dome" /d:Docker Desktop/Sonar.token="${{ secrets.sqp_d3b736215c0155ab7e3351c22dbc656db3a98e2f }}" /d:Docker Desktop/Sonar.host.url="${{ secrets.http://localhost:9000 }}"
           
           # 构建项目 - 请将 YourSolution.sln 替换为实际文件
           dotnet build YourSolution.sln
           
           # 结束分析并上传结果
-          dotnet sonarscanner end /d:sonar.token="${{ sqp_d3b736215c0155ab7e3351c22dbc656db3a98e2f }}"
+          dotnet sonarscanner end /d:sonar.token="${{ secrets.sqp_d3b736215c0155ab7e3351c22dbc656db3a98e2f }}"

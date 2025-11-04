@@ -1,0 +1,65 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.0.x  # 根据你的项目调整版本
+          
+      - name: Check project structure
+        shell: powershell
+        run: |
+          Write-Host "工作目录: $pwd"
+          Write-Host "目录内容:"
+          Get-ChildItem -Recurse -Name
+          
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}\cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+          
+      - name: Install SonarQube scanner
+        shell: powershell
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          
+      - name: Validate secrets
+        shell: powershell
+        run: |
+          if ([string]::IsNullOrEmpty("${{ secrets.SONAR_TOKEN }}")) {
+            Write-Error "SONAR_TOKEN 未正确设置"
+            exit 1
+          }
+          if ([string]::IsNullOrEmpty("${{ secrets.SONAR_HOST_URL }}")) {
+            Write-Error "SONAR_HOST_URL 未正确设置"
+            exit 1
+          }
+          Write-Host "环境变量验证通过"
+          
+      - name: Build and analyze
+        shell: powershell
+        run: |
+          # 开始 SonarQube 分析
+          dotnet sonarscanner begin /G:"Dome" /d:Docker Desktop/Sonar.token="${{ sqp_d3b736215c0155ab7e3351c22dbc656db3a98e2f }}" /d:Docker Desktop/Sonar.host.url="${{ http://localhost:9000 }}"
+          
+          # 构建项目 - 请将 YourSolution.sln 替换为实际文件
+          dotnet build YourSolution.sln
+          
+          # 结束分析并上传结果
+          dotnet sonarscanner end /d:sonar.token="${{ sqp_d3b736215c0155ab7e3351c22dbc656db3a98e2f }}"
